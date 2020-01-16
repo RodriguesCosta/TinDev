@@ -10,11 +10,25 @@ mongoose.connect('mongodb://localhost:27017/tindev', {
   useUnifiedTopology: true,
 })
 
-const server = express()
-server.use(cors())
-server.use(express.json())
+const app = express()
+const server = require('http').Server(app)
+const io = require('socket.io')(server)
 
-server.use(routes)
+const connectedUsers = {}
+
+io.on('connection', socket => {
+  const { user } = socket.handshake.query
+  connectedUsers[user] = socket.id
+})
+
+app.use(cors())
+app.use(express.json())
+app.use((req, res, next) => {
+  res.locals.io = io
+  res.locals.connectedUsers = connectedUsers
+  next()
+})
+app.use(routes)
 
 server.listen(port, () => {
   console.log(`Server start on port ${port}`)
